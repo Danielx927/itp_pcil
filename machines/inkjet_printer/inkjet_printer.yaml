@@ -1,0 +1,238 @@
+# ============================================================
+# PCIL Pipeline Config — Inkjet Printer
+# ============================================================
+# Drives the preprocessing pipeline end-to-end.
+# To add a new machine, copy this file and adjust values.
+# ============================================================
+
+# ── Machine identity ────────────────────────────────────────
+machine:
+  id: inkjet_printer
+  name: "Inkjet Printer"
+  station: "MTO Machine Group — Station 1"
+
+# ── Pipeline settings ───────────────────────────────────────
+pipeline:
+  window_size: "1s"            # resample window  ("500ms", "1s", "5s", etc.)
+  base_data_dir: "../../.."    # resolved against this config file's parent
+                               # → from machines/inkjet_printer/ this points at ITP/
+  output_dir: "output"         # relative to this config file's parent
+
+# ── Schema: defines the final Golden DataFrame layout ──────
+# This block is the contract Pipeline #2 reads. Columns and order here
+# are exactly what gets written to golden_dataframe.csv.
+schema:
+  timestamp_column: timestamp
+  scenario_column:  scenario
+
+  # 4 OEE targets (computed per scenario, constant across that scenario's rows)
+  targets:
+    - { name: availability, normalize: none }
+    - { name: performance,  normalize: none }
+    - { name: quality,      normalize: none }
+    - { name: oee,          normalize: none }
+
+  # ≤6 features picked from the candidate pool below (see source-level features)
+  factors:
+    # — MQTT-sourced (binary events) —
+    - name: air_pressure_low_ratio
+      source: mqtt
+      type: binary
+      column: "Air pressure low"
+      aggregation: ratio
+      normalize: none           # already 0–1 by construction
+    - name: cycle_stop_present
+      source: mqtt
+      type: binary
+      column: "Cycle stop"
+      aggregation: present
+      normalize: none
+
+    # — Acoustic-sourced —
+    - name: vibration
+      source: acoustic
+      type: numeric
+      columns: ["Acceleration 0 (g)", "Acceleration 1 (g)", "Acceleration 2 (g)"]
+      aggregation: magnitude_rms
+      normalize: minmax
+    - name: acoustic_emission
+      source: acoustic
+      type: numeric
+      column: "AE (V) (V)"
+      aggregation: peak
+      normalize: minmax
+
+    # — Machine-params (cyclical) —
+    - name: setpressure_cycle_count
+      source: machine_params
+      type: numeric_cyclical
+      column: "SetPressure"
+      aggregation: cycle_count
+      normalize: minmax
+    - name: setvelo_mean
+      source: machine_params
+      type: numeric
+      column: "SetVelo"
+      aggregation: mean
+      normalize: minmax
+
+# ── MQTT error flag data ────────────────────────────────────
+mqtt:
+  data_type: irregular          # event-driven booleans, no period, no continuity
+  data_dir: "Inkjet Printer Data Collection"
+
+  time_column: "_time"
+
+  flag_columns:
+    - column: "Air pressure low"
+      key: "air_pressure_low"
+      type: binary
+    - column: "Cycle stop"
+      key: "cycle_stop"
+      type: binary
+    - column: "Estop activated"
+      key: "estop_activated"
+      type: binary
+    - column: "Printer error"
+      key: "printer_error"
+      type: binary
+
+  # Each MQTT scenario links to ONE acoustic recording.
+  # Mappings below are best guesses — confirm with Winardi.
+  scenarios:
+    no_error:
+      file: "No Error.csv"
+      acoustic_mapping: machine_on_clean
+      description: "Normal operation, no faults triggered"
+    air_pressure_low:
+      file: "Air Pressure Low.csv"
+      acoustic_mapping: machine_on_anomaly
+      description: "Air supply pressure drops below threshold"
+    cycle_stop:
+      file: "Cycle Stop.csv"
+      acoustic_mapping: machine_off_clean
+      description: "Machine cycle manually stopped (machine ends in OFF state)"
+    estop_activated:
+      file: "EStop Activated.csv"
+      acoustic_mapping: machine_off_anomaly
+      description: "Emergency stop button pressed"
+    printer_error:
+      file: "Printer Error.csv"
+      acoustic_mapping: machine_on_anomaly
+      description: "Printer malfunction"
+
+  # Candidate feature pool (NOT all of these reach the Golden DataFrame —
+  # schema.factors above picks which ones do)
+  features:
+    - active_ms       # total ms the flag was HIGH
+    - ratio           # fraction of window the flag was active (0–1)
+    - present         # binary: was the flag active at all?
+    - transitions     # number of 0↔1 state changes
+
+# ── Acoustic / vibration sensor data ────────────────────────
+acoustic:
+  data_type: non_cyclical       # high-rate continuous numeric, no fixed period
+  data_dir: "Inkjet Printer Data Collection/Acoustic Sensor Data"
+  sample_rate: 25600           # Hz (WebDAQ)
+  header_rows: 5               # metadata rows to skip in each CSV
+
+  sensor_columns:
+    - column: "Acceleration 0 (g)"
+      key: "accel_0"
+      type: numeric
+    - column: "Acceleration 1 (g)"
+      key: "accel_1"
+      type: numeric
+    - column: "Acceleration 2 (g)"
+      key: "accel_2"
+      type: numeric
+    - column: "AE (V) (V)"
+      key: "ae"
+      type: numeric
+
+  features:
+    accel:
+      - rms
+      - peak
+      - std
+      - kurtosis
+      - crest
+      - magnitude_rms
+    ae:
+      - mean
+      - std
+      - peak
+
+  conditions:
+    machine_off_clean:
+      file: "machine_off_clean.csv"
+      machine_on: false
+      is_anomaly: false
+    machine_off_anomaly:
+      file: "machine_off_anomaly.csv"
+      machine_on: false
+      is_anomaly: true
+    machine_on_clean:
+      file: "machine_on_clean.csv"
+      machine_on: true
+      is_anomaly: false
+    machine_on_anomaly:
+      file: "machine_on_anomaly.csv"
+      machine_on: true
+      is_anomaly: true
+
+# ── Machine parameter data ──────────────────────────────────
+machine_params:
+  data_type: cyclical           # SetVelo / SetPressure cycle every ~2.6 s
+  cycle_window: "5s"            # rolling window for cycle features
+  file: "Week0/Clean_Data.csv"  # relative to base_data_dir
+  separator: ";"
+  time_column: "_time"
+
+  columns:
+    - column: "SetVelo"
+      key: "setvelo"
+      type: numeric
+    - column: "SetPressure"
+      key: "setpressure"
+      type: numeric
+
+  features:
+    stats:
+      - mean
+      - std
+      - min
+      - max
+      - range
+    cycle:
+      - cycle_count
+      - cycle_period_mean
+      - cycle_period_std
+      - dominant_freq
+
+# ── OEE inputs ─────────────────────────────────────────────
+oee:
+  planned_production_time: 600   # seconds
+  ideal_cycle_time: 40           # seconds per unit
+
+  scenarios:
+    no_error:
+      run_time: 600
+      operating_time: 600
+      good_units: 15             # 600 / 40
+    air_pressure_low:
+      run_time: 600
+      operating_time: 480
+      good_units: 12
+    cycle_stop:
+      run_time: 500
+      operating_time: 480
+      good_units: 12
+    estop_activated:
+      run_time: 300
+      operating_time: 40
+      good_units: 1
+    printer_error:
+      run_time: 600
+      operating_time: 480
+      good_units: 4

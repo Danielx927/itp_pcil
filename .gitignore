@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Notes
+# - machines/*/output/ IS tracked on purpose: golden_dataframe.csv and
+#   context_model.pkl are real deliverables for Winardi's review.
+# - If output gets too large later, add the line below to ignore CSVs:
+#     # machines/*/output/*.csv

@@ -1,0 +1,28 @@
+# ============================================================
+# Recovery Methods — Oil Filler  (STUB)
+# ============================================================
+# Placeholder. Add real entries when the oil filler's error
+# codes are documented.
+# ============================================================
+
+version: 1
+machine: oil_filler
+last_reviewed: 2026-05-07
+reviewed_by: "TODO"
+
+entries:
+
+  low_flow:
+    severity: medium
+    symptom: >
+      Oil flow rate dropped below the minimum operating
+      threshold during a fill cycle.
+    related_signals:
+      - low_flow_ratio
+      - flow_rate_mean
+    likely_causes:
+      - "TODO — confirm with engineering"
+    recommended_actions:
+      - "TODO — confirm with engineering"
+    references:
+      - "TODO — Operations Manual reference"
