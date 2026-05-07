@@ -115,6 +115,15 @@ Or an explicit YAML path:
 python pcil/preprocess.py machines/inkjet_printer/inkjet_printer.yaml
 ```
 
+If your raw data is somewhere other than the default sibling-folder
+location (see Setup above), point `preprocess.py` at it directly with
+`--data-dir`. The YAML stays untouched:
+
+```bash
+python pcil/preprocess.py --data-dir "D:/PCIL_data"
+python pcil/preprocess.py inkjet_printer --data-dir "~/research/inkjet"
+```
+
 ---
 
 ## Adding a new machine

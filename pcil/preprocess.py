@@ -8,13 +8,16 @@ Golden DataFrame:
     scenario | timestamp | <targets...> | <factors...>     (factors all 0–1)
 
 Run from the PCIL/ root:
-    python pcil/preprocess.py                 # default: inkjet_printer
-    python pcil/preprocess.py oil_filler      # by machine name
-    python pcil/preprocess.py path/to/x.yaml  # by explicit YAML path
+    python pcil/preprocess.py                              # default machine
+    python pcil/preprocess.py <machine_name>               # by machine name
+    python pcil/preprocess.py path/to/x.yaml               # by explicit YAML path
+    python pcil/preprocess.py --data-dir D:/raw            # override base_data_dir
+    python pcil/preprocess.py inkjet_printer --data-dir D:/raw
 """
 
 from __future__ import annotations
 
+import argparse
 import io
 import sys
 from pathlib import Path
@@ -54,13 +57,22 @@ def resolve_config_path(arg: str | None = None) -> Path:
 # 1. CONFIG LOADING
 # ═══════════════════════════════════════════════════════════════
 
-def load_config(config_path: Path) -> dict:
-    """Load YAML and resolve all paths against the config file's directory."""
+def load_config(config_path: Path, data_dir_override: str | None = None) -> dict:
+    """
+    Load YAML and resolve all paths against the config file's directory.
+
+    If `data_dir_override` is provided (e.g. via the --data-dir CLI flag),
+    it replaces the YAML's `pipeline.base_data_dir`. Useful when teammates
+    keep the raw recordings in different folders on their own machines.
+    """
     with open(config_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     config_dir = config_path.parent
-    base_data = (config_dir / cfg["pipeline"]["base_data_dir"]).resolve()
+    if data_dir_override:
+        base_data = Path(data_dir_override).expanduser().resolve()
+    else:
+        base_data = (config_dir / cfg["pipeline"]["base_data_dir"]).resolve()
     output_dir = (config_dir / cfg["pipeline"]["output_dir"]).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -378,14 +390,38 @@ def print_summary(golden: pd.DataFrame, cfg: dict) -> None:
 # ═══════════════════════════════════════════════════════════════
 
 def main():
-    arg = sys.argv[1] if len(sys.argv) > 1 else None
-    config_path = resolve_config_path(arg)
+    parser = argparse.ArgumentParser(
+        description="PCIL Pipeline #1 — turn raw machine CSVs into the Golden DataFrame.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  python pcil/preprocess.py\n"
+            "  python pcil/preprocess.py inkjet_printer\n"
+            "  python pcil/preprocess.py --data-dir D:/raw_data\n"
+            "  python pcil/preprocess.py inkjet_printer --data-dir ~/research/inkjet\n"
+        ),
+    )
+    parser.add_argument(
+        "machine", nargs="?", default=None,
+        help="Machine name (e.g. inkjet_printer) or path to a YAML config. "
+             "Defaults to inkjet_printer.",
+    )
+    parser.add_argument(
+        "--data-dir", default=None,
+        help="Override pipeline.base_data_dir from the YAML. Use when raw "
+             "data lives in a different folder on your machine.",
+    )
+    args = parser.parse_args()
+
+    config_path = resolve_config_path(args.machine)
     if not config_path.is_file():
         print(f"Config not found: {config_path}")
         raise SystemExit(1)
 
     print(f"[1/3] Loading config: {config_path}")
-    cfg = load_config(config_path)
+    cfg = load_config(config_path, data_dir_override=args.data_dir)
+    if args.data_dir:
+        print(f"      base_data_dir overridden -> {cfg['_paths']['base_data']}")
 
     print(f"[2/3] Building Golden DataFrame...")
     golden = build_golden_dataframe(cfg)
