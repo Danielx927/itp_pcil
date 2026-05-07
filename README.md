@@ -4,7 +4,7 @@ A pipeline that watches a factory machine, figures out what is slowing it
 down, and produces an operator-readable explanation. The first machine is
 an inkjet printer at A*STAR SIMTech.
 
-ITP project · Dion Ko (2401112) · Supervisor: Winardi.
+ITP project · Dion Ko (2401112), Zi Hin, Robin, Daniel, Jaymon · Supervisor: Winardi.
 
 ---
 
@@ -36,17 +36,13 @@ PCIL/
 │   └── train_context_model.py       # fits LinearRegression, writes impact JSON + .pkl
 │
 ├── machines/
-│   ├── inkjet_printer/              # one folder per machine
-│   │   ├── inkjet_printer.yaml      # what to read, what to extract
-│   │   ├── recovery_methods.yaml    # troubleshooting cheat sheet
-│   │   └── output/                  # generated artefacts
-│   │       ├── golden_dataframe.csv
-│   │       ├── context_model.pkl
-│   │       └── context_model_impacts.json
-│   │
-│   └── oil_filler/                  # stub for the next machine
-│       ├── oil_filler.yaml          # 5 features, no vibration, has temperature
-│       └── recovery_methods.yaml
+│   └── inkjet_printer/              # one folder per machine
+│       ├── inkjet_printer.yaml      # what to read, what to extract
+│       ├── recovery_methods.yaml    # troubleshooting cheat sheet
+│       └── output/                  # generated artefacts
+│           ├── golden_dataframe.csv
+│           ├── context_model.pkl
+│           └── context_model_impacts.json
 │
 ├── .gitignore
 └── README.md
@@ -74,11 +70,12 @@ python pcil/adapter.py
 python pcil/train_context_model.py
 ```
 
-Each script accepts a machine name as its first argument:
+Each script accepts a machine name as its first argument (defaults to
+`inkjet_printer`):
 
 ```bash
-python pcil/preprocess.py oil_filler
-python pcil/train_context_model.py oil_filler
+python pcil/preprocess.py <machine_name>
+python pcil/train_context_model.py <machine_name>
 ```
 
 Or an explicit YAML path:
@@ -129,5 +126,4 @@ pip install pandas numpy pyyaml scikit-learn joblib tqdm matplotlib reportlab
 | #2 Context Model | v0 working — multi-target LinearRegression |
 | #3 LLM | not started; `recovery_methods.yaml` ready to feed RAG |
 
-Open design questions (for Winardi) live in
-`../Week1/Week1_Summary.pdf`.
+
