@@ -48,10 +48,41 @@ PCIL/
 └── README.md
 ```
 
-The raw machine data (CSVs, recordings) lives **outside** this repo, in
-the parent `ITP/` folder. The YAML's `pipeline.base_data_dir` points at
-that location so the same code can run from any clone of the repo as
-long as the data is alongside it.
+The raw machine data lives **outside** this repo (it's too big for
+GitHub). See the Setup section below for where to put it.
+
+---
+
+## Setup — where to put the raw data
+
+This repo holds code, configs, and small generated artefacts only. The
+raw machine recordings are not tracked here. Before running anything,
+the data needs to sit **next to** your clone of PCIL, not inside it.
+
+If you clone PCIL into `C:\projects\PCIL\`, the expected layout is:
+
+```
+C:\projects\
+├── PCIL\                                  ← this repo
+└── Inkjet Printer Data Collection\        ← the raw data
+    ├── No Error.csv
+    ├── Air Pressure Low.csv
+    ├── Cycle Stop.csv
+    ├── EStop Activated.csv
+    ├── Printer Error.csv
+    └── Acoustic Sensor Data\
+        ├── machine_off_clean.csv
+        ├── machine_off_anomaly.csv
+        ├── machine_on_clean.csv
+        └── machine_on_anomaly.csv
+C:\projects\Week0\Clean_Data.csv           ← machine parameters
+```
+
+The YAML's `pipeline.base_data_dir: "../../.."` resolves to whatever
+folder PCIL sits in. Adjust that line if your data lives elsewhere.
+
+**A*STAR teammates:** the recordings are on the shared drive — ask Dion
+or Winardi for the exact path.
 
 ---
 
