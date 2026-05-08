@@ -16,12 +16,12 @@ Pipeline #1 is responsible for fixing the cause, not us.
 Usage:
     from adapter import adapt, column_names_from_config
 
-    cfg    = yaml.safe_load(open("machines/inkjet_printer/inkjet_printer.yaml"))
+    cfg    = yaml.safe_load(open("machines/inkjet_printer/config.yaml"))
     df     = pd.read_csv("machines/inkjet_printer/output/golden_dataframe.csv")
-    targets, features = column_names_from_config(cfg)
+    targets, features = column_names_from_config(cfg, df)
     bundle = adapt(df, targets, features)
 
-CLI demo (run from PCIL/):
+CLI demo (run from PCIL_dev/):
     python pcil/adapter.py                # default: inkjet_printer
     python pcil/adapter.py oil_filler     # by machine name
 """
@@ -91,10 +91,37 @@ def adapt(
     }
 
 
-def column_names_from_config(cfg: dict) -> tuple[list[str], list[str]]:
-    """Pull (targets, features) from a YAML config's schema block."""
-    targets  = [t["name"] for t in cfg["schema"]["targets"]]
-    features = [f["name"] for f in cfg["schema"]["factors"]]
+def column_names_from_config(
+    cfg: dict,
+    golden_df: pd.DataFrame | None = None,
+) -> tuple[list[str], list[str]]:
+    """
+    Pull (targets, features) for the adapter from a config.yaml.
+
+    Targets come from cfg["input"]["targets"] (declarative).
+
+    Features depend on what ColumnTransformer produced:
+      - If golden_df is provided, derive features from the DataFrame
+        columns (everything that isn't a target or the timestamp).
+        This is the most robust path because it correctly captures
+        post-OneHotEncoder column expansion.
+      - Otherwise return the INPUT-level numerical + categorical names
+        from the YAML. Use only when no categorical features exist.
+    """
+    targets = list(cfg["input"]["targets"])
+
+    if golden_df is not None:
+        timestamp_col = cfg["input"]["timestamp_column"]
+        features = [
+            c for c in golden_df.columns
+            if c not in targets and c != timestamp_col
+        ]
+        return targets, features
+
+    features = (
+        list(cfg["input"].get("numerical_features", []) or [])
+        + list(cfg["input"].get("categorical_features", []) or [])
+    )
     return targets, features
 
 
@@ -103,14 +130,14 @@ def column_names_from_config(cfg: dict) -> tuple[list[str], list[str]]:
 # ─────────────────────────────────────────────────────────────────────
 
 def _resolve_machine(arg: str | None) -> Path:
-    """Resolve a CLI arg → machine config path."""
-    repo_root = Path(__file__).resolve().parent.parent  # PCIL/
+    """Resolve a CLI arg → config.yaml path."""
+    repo_root = Path(__file__).resolve().parent.parent  # PCIL_dev/
     if arg:
         p = Path(arg)
         if p.is_file():
             return p.resolve()
-        return repo_root / "machines" / arg / f"{arg}.yaml"
-    return repo_root / "machines" / "inkjet_printer" / "inkjet_printer.yaml"
+        return repo_root / "machines" / arg / "config.yaml"
+    return repo_root / "machines" / "inkjet_printer" / "config.yaml"
 
 
 if __name__ == "__main__":
@@ -137,13 +164,13 @@ if __name__ == "__main__":
     cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
     df  = pd.read_csv(csv_path)
 
-    targets, features = column_names_from_config(cfg)
+    targets, features = column_names_from_config(cfg, df)
     bundle = adapt(df, targets, features)
 
     print("-" * 60)
     print("ADAPTER STUB - demo run")
     print("-" * 60)
-    print(f"Machine: {cfg['machine']['name']}")
+    print(f"Machine (config folder): {machine_dir.name}")
     print(f"Input  Golden DataFrame: {df.shape[0]} rows x {df.shape[1]} cols")
     print(f"Output X (features):     shape {bundle['X'].shape}")
     print(f"Output y (targets):      shape {bundle['y'].shape}")

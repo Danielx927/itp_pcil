@@ -7,7 +7,7 @@ writes:
   - context_model_impacts.json  (Pipeline #2 output schema)
   - context_model.pkl            (the trained model, ready to reuse)
 
-Run from PCIL/:
+Run from PCIL_dev/:
     python pcil/train_context_model.py                # default: inkjet_printer
     python pcil/train_context_model.py oil_filler     # by machine name
 """
@@ -32,13 +32,13 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 
 def _resolve_machine(arg: str | None) -> Path:
-    repo_root = Path(__file__).resolve().parent.parent  # PCIL/
+    repo_root = Path(__file__).resolve().parent.parent  # PCIL_dev/
     if arg:
         p = Path(arg)
         if p.is_file():
             return p.resolve()
-        return repo_root / "machines" / arg / f"{arg}.yaml"
-    return repo_root / "machines" / "inkjet_printer" / "inkjet_printer.yaml"
+        return repo_root / "machines" / arg / "config.yaml"
+    return repo_root / "machines" / "inkjet_printer" / "config.yaml"
 
 
 def main():
@@ -61,8 +61,9 @@ def main():
 
     df = pd.read_csv(csv_path)
 
-    # 1. Adapt
-    targets, features = column_names_from_config(cfg)
+    # 1. Adapt — derive features from the Golden DataFrame columns so we
+    # capture any post-OneHotEncoder column expansion correctly.
+    targets, features = column_names_from_config(cfg, df)
     bundle = adapt(df, targets, features)
     X, y = bundle["X"], bundle["y"]
 
@@ -70,7 +71,8 @@ def main():
     model = LinearRegression().fit(X, y)
 
     # 3. Build per-target impact blocks
-    timestamps = pd.to_datetime(df["timestamp"])
+    timestamp_col = cfg["input"]["timestamp_column"]
+    timestamps = pd.to_datetime(df[timestamp_col])
     time_from = timestamps.min().isoformat()
     time_to   = timestamps.max().isoformat()
 
@@ -89,7 +91,7 @@ def main():
 
     out = {
         "model":      "linear_regression",
-        "machine":    cfg["machine"]["id"],
+        "machine":    machine_dir.name,
         "fitted_at":  datetime.now(timezone.utc).isoformat(),
         "n_rows":     bundle["n_rows"],
         "n_features": len(features),

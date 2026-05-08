@@ -1,0 +1,49 @@
+# ============================================================
+# PCIL Pipeline #1 — config.yaml
+# ============================================================
+# Describes the contract between the shop-floor DataFrame slice
+# (input) and the Golden DataFrame (output).
+#
+# This file is DataFrame-tied, not machine-tied: the schema below
+# describes the columns Pipeline #1 expects to receive from the
+# shop-floor database (via the trigger). The same shape applies to
+# every machine that feeds into the shared shop-floor DB.
+# ============================================================
+
+# ── Pipeline settings ───────────────────────────────────────
+pipeline:
+  output_dir: "output"            # relative to this config file's parent
+
+# ── Input schema: shop-floor DataFrame slice ────────────────
+# What the trigger pulls from the shop-floor DB. The preprocessing
+# pipeline expects these columns to exist on the input DataFrame.
+input:
+  timestamp_column: timestamp
+
+  # Numerical sensor / process / score columns. Each becomes one
+  # feature in the Golden DataFrame after MinMaxScaler.
+  numerical_features:
+    - air_pressure_low_ratio
+    - cycle_stop_present
+    - vibration
+    - acoustic_emission
+    - setpressure_cycle_count
+    - setvelo_mean
+
+  # Categorical context columns. Each becomes one or more one-hot
+  # features in the Golden DataFrame after OneHotEncoder.
+  categorical_features: []
+
+  # Target columns the context model regresses on. Passed through
+  # unchanged — they are computed upstream (engineering team) and
+  # already live in the shop-floor DB.
+  targets:
+    - availability
+    - performance
+    - quality
+    - oee
+
+# ── Output: Golden DataFrame ────────────────────────────────
+# The contract Pipeline #2 (adapter + context model) reads.
+# Column order: timestamp + targets + features (post-ColumnTransformer).
+# All feature values land in [0, 1] (adapter's range invariant).
