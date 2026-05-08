@@ -14,8 +14,8 @@ machine:
 # ── Pipeline settings ───────────────────────────────────────
 pipeline:
   window_size: "1s"            # resample window  ("500ms", "1s", "5s", etc.)
-  base_data_dir: "../../.."    # resolved against this config file's parent
-                               # → from machines/inkjet_printer/ this points at ITP/
+  base_data_dir: "../../../data"  # resolved against this config file's parent
+                                  # → from machines/inkjet_printer/ this points at ITP/data/
   output_dir: "output"         # relative to this config file's parent
 
 # ── Schema: defines the final Golden DataFrame layout ──────
@@ -185,7 +185,7 @@ acoustic:
 machine_params:
   data_type: cyclical           # SetVelo / SetPressure cycle every ~2.6 s
   cycle_window: "5s"            # rolling window for cycle features
-  file: "Week0/Clean_Data.csv"  # relative to base_data_dir
+  file: "Clean_Data.csv"        # relative to base_data_dir (ITP/data/)
   separator: ";"
   time_column: "_time"
 

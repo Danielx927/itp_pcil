@@ -59,27 +59,30 @@ This repo holds code, configs, and small generated artefacts only. The
 raw machine recordings are not tracked here. Before running anything,
 the data needs to sit **next to** your clone of PCIL, not inside it.
 
-If you clone PCIL into `C:\projects\PCIL\`, the expected layout is:
+If you clone PCIL into `C:\projects\PCIL\`, create a `data/` folder
+alongside it and drop the raw recordings inside:
 
 ```
 C:\projects\
 ├── PCIL\                                  ← this repo
-└── Inkjet Printer Data Collection\        ← the raw data
-    ├── No Error.csv
-    ├── Air Pressure Low.csv
-    ├── Cycle Stop.csv
-    ├── EStop Activated.csv
-    ├── Printer Error.csv
-    └── Acoustic Sensor Data\
-        ├── machine_off_clean.csv
-        ├── machine_off_anomaly.csv
-        ├── machine_on_clean.csv
-        └── machine_on_anomaly.csv
-C:\projects\Week0\Clean_Data.csv           ← machine parameters
+└── data\                                  ← the raw data (sibling of PCIL)
+    ├── Clean_Data.csv                     ← machine parameters
+    └── Inkjet Printer Data Collection\
+        ├── No Error.csv
+        ├── Air Pressure Low.csv
+        ├── Cycle Stop.csv
+        ├── EStop Activated.csv
+        ├── Printer Error.csv
+        └── Acoustic Sensor Data\
+            ├── machine_off_clean.csv
+            ├── machine_off_anomaly.csv
+            ├── machine_on_clean.csv
+            └── machine_on_anomaly.csv
 ```
 
-The YAML's `pipeline.base_data_dir: "../../.."` resolves to whatever
-folder PCIL sits in. Adjust that line if your data lives elsewhere.
+The YAML's `pipeline.base_data_dir: "../../../data"` resolves to the
+sibling `data/` folder. If your data lives elsewhere, either edit that
+line or pass `--data-dir` at runtime (see Quickstart below).
 
 **A*STAR teammates:** the recordings are on the shared drive — ask Dion
 or Winardi for the exact path.
